@@ -1,0 +1,21 @@
+azure:
+    tenantId: 
+    subscriptionId: 
+    resourceGroup:
+        name: rg-st-sample
+        region: eastus
+    containerRegistry:
+        name: acrstsample[unique-id]
+    ioT:
+        name: iot-st-sample-[unique-id]
+        deviceId: device-st-sample
+    relay:
+        namespace: azrelay-st-sample-[unique-id]
+        hybridConnectionName: device-st-sample
+    function:
+        name: func-st-sample-[unique-id]
+        plan: asp-st-sample-[unique-id]
+        storage: strgstsample[unique-id]
+    container:
+        instanceGroupName: aci-st-sample-[unique-id]
+        port: 8090

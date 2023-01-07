@@ -1,0 +1,18 @@
+# Compiled files
+*/bin/*
+bin/
+obj/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.settings.json
+*.DS_Store
+*.vsdx
+.env
+.vs/
+settings.yaml
+app.config

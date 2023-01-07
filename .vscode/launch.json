@@ -1,0 +1,29 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": ".NET Core Launch (console)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/simulated-device/bin/Debug/net6.0/SecureTunneling.SimulatedDevice.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/simulated-device",
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },
+        {
+            "name": ".NET Core Attach",
+            "type": "coreclr",
+            "request": "attach"
+        },
+        {
+            "name": "Attach to .NET Functions",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "func",
+            "args": ["host", "start"],
+            "cwd": "${workspaceFolder}/src/function/bin/Debug/netcoreapp6"
+        }
+    ]
+}
