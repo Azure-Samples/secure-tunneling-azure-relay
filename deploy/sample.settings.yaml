@@ -3,7 +3,7 @@ azure:
     subscriptionId: 
     resourceGroup:
         name: rg-st-sample
-        region: eastus
+        region: westus
     containerRegistry:
         name: acrstsample[unique-id]
     ioT:
