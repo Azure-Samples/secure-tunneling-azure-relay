@@ -3,11 +3,10 @@
     using System;
     using System.Collections.Generic;
     using System.Configuration;
-    using System.IO;
-    using System.Net;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.AspNetCore.Builder;
     using Microsoft.Azure.Devices.Client;
     using Microsoft.Azure.Relay.Bridge;
     using Microsoft.Azure.Relay.Bridge.Configuration;
@@ -15,12 +14,8 @@
 
     internal class Program
     {
-        private static readonly string Url = "http://localhost:8080/";
-        private static readonly string PageData = File.ReadAllText("SamplePage.html");
-
         private static DeviceClient deviceClient;
         private static Host host;
-        private static HttpListener listener;
         private static bool connected;
         private static string deviceId;
 
@@ -192,13 +187,10 @@
         private static async Task StartWebServer()
         {
             var builder = WebApplication.CreateBuilder();
-            builder.WebHost.UseUrls(Url);
 
             var app = builder.Build();
-
             app.MapGet("/", () => "Hello from device!");
-
-            app.Run();
+            await app.RunAsync();
         }
     }
 }

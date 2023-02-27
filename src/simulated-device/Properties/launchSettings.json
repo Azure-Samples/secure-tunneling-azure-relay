@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "SecureTunneling.SimulatedDevice": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "applicationUrl": "http://localhost:8080"
+    }
+  }
+}
