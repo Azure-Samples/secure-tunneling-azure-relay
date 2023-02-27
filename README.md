@@ -97,7 +97,7 @@ To start the simulated device follow these steps:
 
     ![simulated-device-telemetry](docs/assets/simulated-device-telemetry.png)
 
-1. Confirm you can access the local web server on `http://127.0.0.1:8080/`
+1. Confirm you can access the local web server on `http://localhost:8080/`
 
     ![web-server](docs/assets/web-server.png)
 

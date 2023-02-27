@@ -3,11 +3,10 @@
     using System;
     using System.Collections.Generic;
     using System.Configuration;
-    using System.IO;
-    using System.Net;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.AspNetCore.Builder;
     using Microsoft.Azure.Devices.Client;
     using Microsoft.Azure.Relay.Bridge;
     using Microsoft.Azure.Relay.Bridge.Configuration;
@@ -15,12 +14,8 @@
 
     internal class Program
     {
-        private static readonly string Url = "http://127.0.0.1:8080/";
-        private static readonly string PageData = File.ReadAllText("SamplePage.html");
-
         private static DeviceClient deviceClient;
         private static Host host;
-        private static HttpListener listener;
         private static bool connected;
         private static string deviceId;
 
@@ -49,7 +44,7 @@
                 Console.WriteLine("Exiting...");
             };
 
-            await Task.WhenAll(SendTelemetry(cts), StartWebServer(cts));
+            await Task.WhenAll(SendTelemetry(cts), StartWebServer());
         }
 
         private static async Task InitializeDeviceClient(string deviceConnectionString)
@@ -70,7 +65,7 @@
                     new RemoteForward
                     {
                         RelayName = deviceId,
-                        Host = "127.0.0.1",
+                        Host = "localhost",
                         HostPort = 8080,
                         PortName = "test",
                     }
@@ -189,48 +184,13 @@
             }
         }
 
-        private static async Task StartWebServer(CancellationTokenSource cts)
+        private static async Task StartWebServer()
         {
-            listener = new HttpListener();
-            listener.Prefixes.Add(Url);
-            listener.Start();
-            Console.WriteLine("Listening for connections on {0}", Url);
+            var builder = WebApplication.CreateBuilder();
 
-            await HandleIncomingConnections(cts.Token);
-
-            listener.Close();
-        }
-
-        private static async Task HandleIncomingConnections(CancellationToken ct)
-        {
-            try
-            {
-                while (!ct.IsCancellationRequested)
-                {
-                    HttpListenerContext ctx = await listener.GetContextAsync()
-                        .AsCancellable(ct);
-
-                    HttpListenerRequest req = ctx.Request;
-                    HttpListenerResponse resp = ctx.Response;
-
-                    Console.WriteLine(req.Url.ToString());
-                    Console.WriteLine(req.HttpMethod);
-                    Console.WriteLine(req.UserHostName);
-                    Console.WriteLine(req.UserAgent);
-                    Console.WriteLine();
-
-                    byte[] data = Encoding.UTF8.GetBytes(string.Format(PageData));
-                    resp.ContentType = "text/html";
-                    resp.ContentEncoding = Encoding.UTF8;
-                    resp.ContentLength64 = data.LongLength;
-
-                    await resp.OutputStream.WriteAsync(data, ct);
-                    resp.Close();
-                }
-            }
-            catch (TaskCanceledException)
-            {
-            }
+            var app = builder.Build();
+            app.MapGet("/", () => "Hello from device!");
+            await app.RunAsync();
         }
     }
 }
