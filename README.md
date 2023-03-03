@@ -116,11 +116,16 @@ DELETE will:
 - De-provision the ACI that runs the Azure Relay bridge for the local forwarder
 
 To call the function to create a connection use Postman or curl:
-
 ```bash
-curl --location --request POST "https://<your-function-name>.azurewebsites.net/api/connection" \
+export FUNCTION_NAME=<your-function-name>
+```
+```bash
+export DEVICE_ID=<your-device-id>
+```
+```bash
+curl --location --request POST "https://$FUNCTION_NAME.azurewebsites.net/api/connection" \
 --header 'Content-Type: application/json' \
---data-raw '{ "deviceId": "<your-device-id>" }'
+--data-raw "{ \"deviceId\": \"$DEVICE_ID\" }"
 ```
 
 The call will be captured on the device logs:
@@ -138,9 +143,10 @@ Once DNS is propagated and ACI starts up (it might take a few minutes), you will
 To call the function to delete the connection use Postman or curl:
 
 ```bash
-curl --location --request DELETE "https://<your-function-name>.azurewebsites.net/api/connection" \
+curl --location --request DELETE "https://$FUNCTION_NAME.azurewebsites.net/api/connection" \
 --header 'Content-Type: application/json' \
---data-raw '{ "deviceId": "<your-device-id>" }'
+--data-raw "{ \"deviceId\": \"$DEVICE_ID\" }"
+
 ```
 
 ## Clean up resources
