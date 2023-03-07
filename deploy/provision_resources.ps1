@@ -2,7 +2,8 @@ param(
     [switch]$SkipLogin,
     [switch]$SkipProvisionResources,
     [switch]$SkipBuildPushImages,
-    [switch]$SkipFunctionDeployment
+    [switch]$SkipFunctionDeployment,
+    [switch]$AzWebPubSubBridge
 )
 
 $ErrorActionPreference = "Stop"
@@ -38,6 +39,9 @@ function CreateDeviceAppConfig {
     <appSettings>
         <add key="IOTHUB_DEVICE_CONNECTION_STRING" value="$DeviceConnectionString" />
         <add key="AZRELAY_CONN_STRING" value="$AzureRelayConnString" />
+        <add key="AZWEBPUBSUB_KEY" value="$AzWebPubSubKey" />
+        <add key="AZWEBPUBSUB_ENDPOINT" value="$AzWebPubSubEndpoint" />
+        <add key="AZWEBPUBSUB_HUB" value="$AzureWebPubSubHubName" />
     </appSettings>
 </configuration>
 "@
@@ -76,6 +80,12 @@ if (-not $SkipProvisionResources) {
 
     Write-Host "Creating a storage account..."
     az storage account create --name $Azure.Function.Storage --resource-group $Azure.ResourceGroup.Name
+
+    if ($AzWebPubSubBridge) {
+        Write-Host "Creating Azure Web PubSub..."
+        az webpubsub create --resource-group $Azure.ResourceGroup.Name --name $Azure.WebPubSub.Name --sku Standard_S1
+        az webpubsub hub create --resource-group $Azure.ResourceGroup.Name --name $Azure.WebPubSub.Name --hub-name $Azure.WebPubSub.HubName
+    }
 }
 
 Write-Host "Logging in to the Azure Container Registry..."
@@ -87,6 +97,15 @@ $FunctionImage = $AcrServer + "/" + $Azure.Function.Name + ":latest"
 $LocalForwarderImage = $AcrServer + "/localforwarder-azbridge:latest"
 $AzureRelayConnString = $(az relay namespace authorization-rule keys list --resource-group $Azure.ResourceGroup.Name --namespace-name $Azure.Relay.Namespace --name SendListen --query primaryConnectionString -o tsv)
 $DeviceConnectionString = $(az iot hub device-identity connection-string show --device-id $Azure.IoT.DeviceId --hub-name $Azure.IoT.Name -o tsv)
+
+if ($AzWebPubSubBridge) {
+    $AzWebPubSubBridgeImage = $AcrServer + "/az-web-pubsub-bridge:latest"
+    $AzWebPubSubKey = $(az webpubsub key show --resource-group $Azure.ResourceGroup.Name --name $Azure.WebPubSub.Name --query primaryKey -o tsv)
+    $AzWebPubSubEndpoint = "https://" + $Azure.WebPubSub.Name + ".webpubsub.azure.com"
+    $AzWebPubSubBridgePath = $Azure.WebPubSub.BridgeFolderPath + "/."
+    $AzWebPubSubBridgeDockerfile = $Azure.WebPubSub.BridgeFolderPath + "/Dockerfile"
+    $AzureWebPubSubHubName = $Azure.WebPubSub.HubName
+}
 
 Write-Host "Creating simulated-device app.config..."
 CreateDeviceAppConfig
@@ -103,6 +122,14 @@ if (-not $SkipBuildPushImages) {
 
     Write-Host "Pushing the azure function image to the Azure Container Registry..."
     docker push $FunctionImage
+
+    if ($AzWebPubSubBridge) {
+        Write-Host "Building the docker image for the azure web pubsub bridge..."
+        docker buildx build --platform linux/amd64 $AzWebPubSubBridgePath -f $AzWebPubSubBridgeDockerfile --tag $AzWebPubSubBridgeImage
+
+        Write-Host "Pushing the azure web pubsub bridge image to Azure Container Registry..."
+        docker push $AzWebPubSubBridgeImage
+    }
 }
 
 if (-not $SkipFunctionDeployment) {
@@ -137,6 +164,13 @@ if (-not $SkipFunctionDeployment) {
     AddAppSetting -SettingName "CONTAINER_REGISTRY_PASSWORD" -SettingValue $AcrUserPassword
     AddAppSetting -SettingName "IOT_SERVICE_CONN_STRING" -SettingValue $IoTHubServiceConnectionString
     AddAppSetting -SettingName "RESOURCE_GROUP_NAME" -SettingValue $Azure.ResourceGroup.Name
+
+    if ($AzWebPubSubBridge) {
+        AddAppSetting -SettingName "AZWEBPUBSUB_KEY" -SettingValue $AzWebPubSubKey
+        AddAppSetting -SettingName "AZWEBPUBSUB_ENDPOINT" -SettingValue $AzWebPubSubEndpoint
+        AddAppSetting -SettingName "AZWEBPUBSUB_HUB" -SettingValue $Azure.WebPubSub.HubName
+        AddAppSetting -SettingName "AZWEBPUBSUB_BRIDGE_CONTAINER_IMAGE" -SettingValue $AzWebPubSubBridgeImage
+    }
     $AzureFunctionSettings | ConvertTo-Json -AsArray | Out-File $FunctionAppSettingsFile
 
     Write-Host "Configuring the azure function app settings..."
