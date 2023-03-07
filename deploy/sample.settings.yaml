@@ -19,3 +19,7 @@ azure:
     container:
         instanceGroupName: aci-st-sample-[unique-id]
         port: 8090
+    webPubSub:
+        name: pubsub-st-sample-[unique-id]
+        hubName: bridge
+        bridgeFolderPath: /path/to/azure-web-pubsub-bridge/src/AzureWebPubSubBridge

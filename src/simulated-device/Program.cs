@@ -1,4 +1,7 @@
-﻿namespace SecureTunneling.SimulatedDevice
+﻿using AzureWebPubSubBridge;
+using Microsoft.Extensions.Hosting;
+
+namespace SecureTunneling.SimulatedDevice
 {
     using System;
     using System.Collections.Generic;
@@ -16,7 +19,9 @@
     {
         private static DeviceClient deviceClient;
         private static Host host;
+        private static IHost webPubSubBridgeHost;
         private static bool connected;
+        private static bool isWebPubSub;
         private static string deviceId;
 
         private static async Task Main()
@@ -36,7 +41,10 @@
 
                 if (connected)
                 {
-                    host.Stop();
+                    if (isWebPubSub)
+                        webPubSubBridgeHost.StopAsync().GetAwaiter().GetResult();
+                    else
+                        host.Stop();
                     connected = false;
                 }
                 cts.Cancel();
@@ -53,6 +61,7 @@
             deviceClient.SetRetryPolicy(new ExponentialBackoff(5, TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(10), TimeSpan.FromMilliseconds(100)));
 
             await deviceClient.SetMethodHandlerAsync("CreateConnection", CreateConnection, null);
+            await deviceClient.SetMethodHandlerAsync("CreateWebPubSubConnection", CreateWebPubSubConnection, null);
             await deviceClient.SetMethodHandlerAsync("DeleteConnection", DeleteConnection, null);
         }
 
@@ -76,6 +85,21 @@
             host = new(config);
         }
 
+        private static void InitializeAzureWebPubSubBridgeHost()
+        {
+            var azureWebPubSubEndpoint = ConfigurationManager.AppSettings["AZWEBPUBSUB_ENDPOINT"];
+            var azureWebPubSubKey = ConfigurationManager.AppSettings["AZWEBPUBSUB_KEY"];
+            var azureWebPubSubHub = ConfigurationManager.AppSettings["AZWEBPUBSUB_HUB"];
+            webPubSubBridgeHost = BridgeHost.CreateRemote(c =>
+            {
+                c.PubSubEndpoint = new Uri(azureWebPubSubEndpoint);
+                c.PubSubKey = azureWebPubSubKey;
+                c.Hub = azureWebPubSubHub;
+                c.Port = 65532;
+                c.Connect.ServerId = deviceId;
+            });
+        }
+
         private static Task<MethodResponse> CreateConnection(MethodRequest methodRequest, object userContext)
         {
             Console.ForegroundColor = ConsoleColor.Green;
@@ -90,6 +114,7 @@
                     Console.WriteLine("Starting remote forwarder.");
                     host.Start();
                     connected = true;
+                    isWebPubSub = false;
                 }
                 catch (Exception ex)
                 {
@@ -103,7 +128,36 @@
             return Task.FromResult(new MethodResponse(Encoding.UTF8.GetBytes(result), 200));
         }
 
-        private static Task<MethodResponse> DeleteConnection(MethodRequest methodRequest, object userContext)
+        private static async Task<MethodResponse> CreateWebPubSubConnection(MethodRequest methodRequest, object userContext)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"Received request to create azure web pubsub connection. Device Id: {deviceId}");
+            Console.ResetColor();
+            string result;
+
+            if (!connected)
+            {
+                try
+                {
+                    Console.WriteLine("Starting az web pubsub bridge remote forwarder.");
+                    InitializeAzureWebPubSubBridgeHost();
+                    await webPubSubBridgeHost.StartAsync();
+                    connected = true;
+                    isWebPubSub = true;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    result = $"{{\"result\":\"Unable to start Az Web PubSub Bridge Remote Forwarder for Hybrid Connection: {deviceId}\"}}";
+                    return new MethodResponse(Encoding.UTF8.GetBytes(result), 500);
+                }
+            }
+
+            result = $"{{\"result\":\"Executed direct method: {methodRequest.Name} for Hybrid Connection: {deviceId}\"}}";
+            return new MethodResponse(Encoding.UTF8.GetBytes(result), 200);
+        }
+
+        private static async Task<MethodResponse> DeleteConnection(MethodRequest methodRequest, object userContext)
         {
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"Received request to delete connection. Device Id: {deviceId}");
@@ -115,19 +169,22 @@
                 try
                 {
                     Console.WriteLine("Stopping remote forwarder.");
-                    host.Stop();
+                    if (isWebPubSub)
+                        await webPubSubBridgeHost.StopAsync();
+                    else
+                        host.Stop();
                     connected = false;
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine(ex.Message);
                     result = $"{{\"result\":\"Unable to stop Remote Forwarder for Hybrid Connection: {deviceId}\"}}";
-                    return Task.FromResult(new MethodResponse(Encoding.UTF8.GetBytes(result), 500));
+                    return new MethodResponse(Encoding.UTF8.GetBytes(result), 500);
                 }
             }
 
             result = $"{{\"result\":\"Executed direct method: {methodRequest.Name} for Hybrid Connection: {deviceId}\"}}";
-            return Task.FromResult(new MethodResponse(Encoding.UTF8.GetBytes(result), 204));
+            return new MethodResponse(Encoding.UTF8.GetBytes(result), 204);
         }
 
         private static async Task SendTelemetry(CancellationTokenSource cts)

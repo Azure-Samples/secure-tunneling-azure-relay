@@ -53,6 +53,7 @@ namespace SecureTunneling
         {
             string requestBody = await new StreamReader(request.Body).ReadToEndAsync();
             IoTDevice device = JsonConvert.DeserializeObject<IoTDevice>(requestBody);
+            string bridgeType = device.BridgeType;
             string deviceId = device.DeviceId;
 
             if (string.IsNullOrEmpty(deviceId))
@@ -71,7 +72,7 @@ namespace SecureTunneling
                     return new NoContentResult();
                 }
 
-                (int statusCode, string message) = await CreateConnection(deviceId, serviceClient, logger);
+                (int statusCode, string message) = await CreateConnection(bridgeType, deviceId, serviceClient, logger);
                 return new ObjectResult(message) { StatusCode = statusCode };
             }
             catch (Exception ex)
@@ -95,17 +96,42 @@ namespace SecureTunneling
         }
         
         private async Task<(int, string)> CreateConnection(
+            string bridgeType,
             string deviceId,
             ServiceClient serviceClient,
             ILogger logger)
         {
             logger.LogInformation($"Invoking direct method 'CreateConnection' on device: {deviceId}");
-            CloudToDeviceMethodResult result = await InvokeCloudToDeviceMethodAsync("CreateConnection", deviceId, serviceClient);
+            var isWebPubSubBridgeType = string.Equals(bridgeType, "webpubsub", StringComparison.OrdinalIgnoreCase);
+            var method = isWebPubSubBridgeType
+                ? "CreateWebPubSubConnection"
+                : "CreateConnection";
+            CloudToDeviceMethodResult result = await InvokeCloudToDeviceMethodAsync(method, deviceId, serviceClient);
             if (result.Status == 200)
             {
                 logger.LogInformation("Starting ACI...");
-                string response = CreateContainerGroup(deviceId, logger);
-                return (200, response);
+
+                Dictionary<string, string> envVars = new();
+                if (isWebPubSubBridgeType)
+                {
+                    envVars["Local__PubSubEndpoint"] = this.config.AZWEBPUBSUB_ENDPOINT;
+                    envVars["Local__PubSubKey"] = this.config.AZWEBPUBSUB_KEY;
+                    envVars["Local__Hub"] = this.config.AZWEBPUBSUB_HUB;
+                    envVars["Local__Port"] = $"{this.config.CONTAINER_PORT}";
+                    envVars["Local__Connect__IpAddress"] = "127.0.0.1";
+                    envVars["Local__Connect__Port"] = "8080";
+                    envVars["Local__Connect__ServerId"] = deviceId;
+                    string response = CreateContainerGroup(this.config.AZWEBPUBSUB_BRIDGE_CONTAINER_IMAGE, envVars, logger);
+                    return (200, response);
+                }
+                else
+                {
+                    envVars["AZRELAY_CONN_STRING"] = this.config.AZRELAY_CONN_STRING;
+                    envVars["AZRELAY_HYBRID_CONNECTION"] = deviceId;
+                    envVars["CONTAINER_PORT"] = $"{this.config.CONTAINER_PORT}";
+                    string response = CreateContainerGroup(this.config.CONTAINER_IMAGE, envVars, logger);
+                    return (200, response);
+                }
             }
             else
             {
@@ -128,7 +154,8 @@ namespace SecureTunneling
         }
 
         private string CreateContainerGroup(
-            string deviceId,
+            string image,
+            Dictionary<string, string> envVars,
             ILogger logger)
         {
             DefaultAzureCredential defaultCreds = new (new DefaultAzureCredentialOptions());
@@ -144,13 +171,6 @@ namespace SecureTunneling
             IResourceGroup resGroup = azure.ResourceGroups.GetByName(this.config.RESOURCE_GROUP_NAME);
             Region azureRegion = resGroup.Region;
 
-            Dictionary<string, string> envVars = new ()
-            {
-                { "AZRELAY_CONN_STRING",  this.config.AZRELAY_CONN_STRING },
-                { "AZRELAY_HYBRID_CONNECTION", deviceId },
-                { "CONTAINER_PORT", $"{this.config.CONTAINER_PORT}" },
-            };
-
             var containerGroup = azure.ContainerGroups.GetByResourceGroup(this.config.RESOURCE_GROUP_NAME, this.config.CONTAINER_GROUP_NAME);
             if (containerGroup == null)
             {
@@ -161,7 +181,7 @@ namespace SecureTunneling
                     .WithPrivateImageRegistry(this.config.CONTAINER_REGISTRY, this.config.CONTAINER_REGISTRY_USERNAME, this.config.CONTAINER_REGISTRY_PASSWORD)
                     .WithoutVolume()
                     .DefineContainerInstance(this.config.CONTAINER_GROUP_NAME + "-1")
-                        .WithImage(this.config.CONTAINER_IMAGE)
+                        .WithImage(image)
                         .WithExternalTcpPort(this.config.CONTAINER_PORT)
                         .WithCpuCoreCount(1.0)
                         .WithMemorySizeInGB(1)

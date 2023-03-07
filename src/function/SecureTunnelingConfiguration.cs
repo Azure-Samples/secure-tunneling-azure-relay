@@ -54,5 +54,25 @@ namespace SecureTunneling.Functions
         /// The resource group name.
         /// </summary>
         public string RESOURCE_GROUP_NAME { get; set; }
+
+        /// <summary>
+        /// The azure web pub sub endpoint.
+        /// </summary>
+        public string AZWEBPUBSUB_ENDPOINT { get; set; }
+
+        /// <summary>
+        /// The azure web pub sub key.
+        /// </summary>
+        public string AZWEBPUBSUB_KEY { get; set; }
+
+        /// <summary>
+        /// The azure web pub sub hub.
+        /// </summary>
+        public string AZWEBPUBSUB_HUB { get; set; }
+
+        /// <summary>
+        /// The azure web pub sub hub.
+        /// </summary>
+        public string AZWEBPUBSUB_BRIDGE_CONTAINER_IMAGE { get; set; }
     }
 }
