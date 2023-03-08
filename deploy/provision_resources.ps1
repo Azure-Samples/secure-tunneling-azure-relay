@@ -38,6 +38,8 @@ function CreateDeviceAppConfig {
     <appSettings>
         <add key="IOTHUB_DEVICE_CONNECTION_STRING" value="$DeviceConnectionString" />
         <add key="AZRELAY_CONN_STRING" value="$AzureRelayConnString" />
+        <add key="SERVICE_PROTOCOL" value="$ServiceProtocol" />
+        <add key="SERVICE_PORT" value="$ServicePort" />
     </appSettings>
 </configuration>
 "@
@@ -87,6 +89,8 @@ $FunctionImage = $AcrServer + "/" + $Azure.Function.Name + ":latest"
 $LocalForwarderImage = $AcrServer + "/localforwarder-azbridge:latest"
 $AzureRelayConnString = $(az relay namespace authorization-rule keys list --resource-group $Azure.ResourceGroup.Name --namespace-name $Azure.Relay.Namespace --name SendListen --query primaryConnectionString -o tsv)
 $DeviceConnectionString = $(az iot hub device-identity connection-string show --device-id $Azure.IoT.DeviceId --hub-name $Azure.IoT.Name -o tsv)
+$ServiceProtocol = $Azure.IoT.serviceProtocol
+$ServicePort = $Azure.IoT.servicePort
 
 Write-Host "Creating simulated-device app.config..."
 CreateDeviceAppConfig

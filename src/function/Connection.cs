@@ -103,8 +103,9 @@ namespace SecureTunneling
             CloudToDeviceMethodResult result = await InvokeCloudToDeviceMethodAsync("CreateConnection", deviceId, serviceClient);
             if (result.Status == 200)
             {
+                string deviceProtocol = JsonConvert.DeserializeObject<CreateConnectionResponse>(result.GetPayloadAsJson()).ServiceProtocol;
                 logger.LogInformation("Starting ACI...");
-                string response = CreateContainerGroup(deviceId, logger);
+                string response = CreateContainerGroup(deviceId, deviceProtocol, logger);
                 return (200, response);
             }
             else
@@ -128,7 +129,7 @@ namespace SecureTunneling
         }
 
         private string CreateContainerGroup(
-            string deviceId,
+            string deviceId, string serviceProtocol,
             ILogger logger)
         {
             DefaultAzureCredential defaultCreds = new (new DefaultAzureCredentialOptions());
@@ -169,20 +170,20 @@ namespace SecureTunneling
                         .Attach()
                     .WithDnsPrefix(this.config.CONTAINER_GROUP_NAME)
                     .Create();
-                logger.LogInformation($"Once DNS has propagated, container group '{containerGroup.Name}' will be reachable at http://{containerGroup.Fqdn}");
+                logger.LogInformation($"Once DNS has propagated, container group '{containerGroup.Name}' will be reachable using {serviceProtocol} at '{containerGroup.Fqdn}:{this.config.CONTAINER_PORT}'");
             }
             else if (containerGroup.State == "Stopped")
             {
                 logger.LogInformation($"Container group '{this.config.CONTAINER_GROUP_NAME}' already exists but is in Stopped state.");
                 azure.ContainerGroups.Start(this.config.RESOURCE_GROUP_NAME, this.config.CONTAINER_GROUP_NAME);
-                logger.LogInformation($"'{containerGroup.Name}' is starting and will be reachable at http://{containerGroup.Fqdn}");
+                logger.LogInformation($"'{containerGroup.Name}' is starting and will be reachable using {serviceProtocol} at '{containerGroup.Fqdn}:{this.config.CONTAINER_PORT}'");
             }
             else
             {
                 logger.LogInformation($"Container group '{containerGroup.Name}' already exists and is running.");
             }
 
-            return $"Device access will be available via: http://{containerGroup.Fqdn}:{this.config.CONTAINER_PORT}";
+            return $"Device access will be available using {serviceProtocol} at '{containerGroup.Fqdn}:{this.config.CONTAINER_PORT}'";
         }
 
         private void DeleteContainerGroup(ILogger logger)

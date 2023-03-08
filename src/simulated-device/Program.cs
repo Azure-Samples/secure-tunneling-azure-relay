@@ -18,11 +18,15 @@
         private static Host host;
         private static bool connected;
         private static string deviceId;
+        private static string serviceProtocol;
+        private static int servicePort;
 
         private static async Task Main()
         {
             var deviceConnectionString = ConfigurationManager.AppSettings["IOTHUB_DEVICE_CONNECTION_STRING"];
             var azureRelayConnectionString = ConfigurationManager.AppSettings["AZRELAY_CONN_STRING"];
+            serviceProtocol = ConfigurationManager.AppSettings["SERVICE_PROTOCOL"];
+            servicePort = int.Parse(ConfigurationManager.AppSettings["SERVICE_PORT"]);
             deviceId = IotHubConnectionStringBuilder.Create(deviceConnectionString).DeviceId;
 
             await InitializeDeviceClient(deviceConnectionString);
@@ -52,7 +56,7 @@
             deviceClient = DeviceClient.CreateFromConnectionString(deviceConnectionString);
             deviceClient.SetRetryPolicy(new ExponentialBackoff(5, TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(10), TimeSpan.FromMilliseconds(100)));
 
-            await deviceClient.SetMethodHandlerAsync("CreateConnection", CreateConnection, null);
+            await deviceClient.SetMethodHandlerAsync("CreateConnection", CreateConnection, serviceProtocol);
             await deviceClient.SetMethodHandlerAsync("DeleteConnection", DeleteConnection, null);
         }
 
@@ -66,8 +70,8 @@
                     {
                         RelayName = deviceId,
                         Host = "localhost",
-                        HostPort = 8080,
-                        PortName = "test",
+                        HostPort = servicePort,
+                        PortName = "test"
                     }
                 },
                 AzureRelayConnectionString = azureRelayConnectionString
@@ -76,7 +80,7 @@
             host = new(config);
         }
 
-        private static Task<MethodResponse> CreateConnection(MethodRequest methodRequest, object userContext)
+        private static Task<MethodResponse> CreateConnection(MethodRequest methodRequest, object serviceProtocol)
         {
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"Received request to create connection. Device Id: {deviceId}");
@@ -87,19 +91,23 @@
             {
                 try
                 {
-                    Console.WriteLine("Starting remote forwarder.");
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine($"Starting remote forwarder for {serviceProtocol} on port {servicePort}.");
+                    Console.ResetColor();
                     host.Start();
                     connected = true;
                 }
                 catch (Exception ex)
                 {
+                    Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine(ex.Message);
+                    Console.ResetColor();
                     result = $"{{\"result\":\"Unable to start Remote Forwarder for Hybrid Connection: {deviceId}\"}}";
                     return Task.FromResult(new MethodResponse(Encoding.UTF8.GetBytes(result), 500));
                 }
             }
 
-            result = $"{{\"result\":\"Executed direct method: {methodRequest.Name} for Hybrid Connection: {deviceId}\"}}";
+            result = $"{{\"result\":\"Executed direct method: {methodRequest.Name} for Hybrid Connection: {deviceId}\", \"serviceProtocol\":\"{serviceProtocol}\", \"servicePort\":\"{servicePort}\"}}";
             return Task.FromResult(new MethodResponse(Encoding.UTF8.GetBytes(result), 200));
         }
 
@@ -114,13 +122,17 @@
             {
                 try
                 {
+                    Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine("Stopping remote forwarder.");
+                    Console.ResetColor();
                     host.Stop();
                     connected = false;
                 }
                 catch (Exception ex)
                 {
+                    Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine(ex.Message);
+                    Console.ResetColor();
                     result = $"{{\"result\":\"Unable to stop Remote Forwarder for Hybrid Connection: {deviceId}\"}}";
                     return Task.FromResult(new MethodResponse(Encoding.UTF8.GetBytes(result), 500));
                 }
@@ -179,7 +191,9 @@
             }
             catch (Exception ex)
             {
+                Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"{ex.GetType()}\nConfirm app setting 'IOTHUB_DEVICE_CONNECTION_STRING' is valid.");
+                Console.ResetColor();
                 Environment.Exit(1);
             }
         }
