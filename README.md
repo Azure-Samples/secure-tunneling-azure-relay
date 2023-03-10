@@ -105,7 +105,10 @@ To start the simulated device follow these steps:
 
     ![web-server](docs/assets/web-server.png)
 
-    If you are using a different protocol, use the appropriate client tool to access the service running on the device. 
+    If you are using a different protocol, use the appropriate client tool to confirm access to the service running on the device. For example, using SSH:
+    ```bash
+    ssh <username>@localhost
+    ``` 
 
 ### Call the Azure Function to create a connection to the device
 
@@ -142,11 +145,18 @@ Example Postman request:
 
 ![postman](docs/assets/postman.png)
 
-Once DNS is propagated and ACI starts up (it might take a few minutes), you will be able to access the service that is running on the device using the ACI FQDN and port number that are returned in the response. For example, using HTTP:
+Once DNS is propagated and ACI starts up (it might take a few minutes), you will be able to access the service that is running on the device using the ACI FQDN and port number that are returned in the response. 
+
+For example, using HTTP:
 
 ![web-server-aci](docs/assets/web-server-aci.png)
 
-To call the function to delete the connection use Postman or curl:
+For example, using SSH:
+```bash
+ssh -p 8090 <username>@<aci-fqdn>
+```
+
+To call the function to delete the connection, use Postman or curl:
 
 ```bash
 curl --location --request DELETE "https://$FUNCTION_NAME.azurewebsites.net/api/connection" \
