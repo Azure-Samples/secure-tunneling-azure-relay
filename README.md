@@ -54,7 +54,7 @@ The flow below demonstrates how a user can access a service that is running on a
 
     Set the tenantId and subscriptionId, and adjust the values for the Azure resource names by replacing `[unique-id]` with a unique identifier so that your resource names are unique across Azure.
 
-    To use a different protocol than HTTP, change the value of `deviceProtocol` to an appropriate value, e.g., `ssh` and change the `devicePort` to the port on which the service is running, e.g., `22`. Note: The value of the protocol is arbitrary, used only for messaging purposes and does not have to match the actual protocol running on the device.
+    To use a different protocol than HTTP, change the value of `serviceProtocol` to an appropriate value, e.g., `ssh` and change the `servicePort` to the port on which the service is running, e.g., `22`. Note: The value of the protocol is arbitrary, used only for messaging purposes and does not have to match the actual protocol running on the device.
 
 1. Execute `provision_resources.ps1` script to:
 
