@@ -17,9 +17,11 @@ When devices are installed at remote locations and protected by firewalls, the u
 
 Secure Tunneling enables users to establish secure, bidirectional connections to edge devices, without making significant changes to the firewall or network configuration on the edge. 
 
-This code sample implements a Secure Tunneling solution leveraging the [Azure Relay service](https://learn.microsoft.com/en-us/azure/azure-relay/relay-what-is-it) and demonstrates how to open a connection that uses a secure tunnel between a cloud end point and a device at a remote site. The device acts as a listener that creates a [hybrid connection](https://learn.microsoft.com/en-us/azure/azure-relay/relay-hybrid-connections-protocol) with Azure Relay and waits for connection requests. An application running in the cloud can connect to the device by targeting the same hybrid connection. The cloud application then exposes a public endpoint that is accessible to users and marshalls all bytes between the user and the device through the hybrid connection. This enables communication between the user and device using any protocol that leverages TCP (this sample uses HTTP).
+This code sample implements a Secure Tunneling solution leveraging the [Azure Relay service](https://learn.microsoft.com/en-us/azure/azure-relay/relay-what-is-it) and demonstrates how to open a connection that uses a secure tunnel between a cloud end point and a device at a remote site. The device acts as a listener that creates a [hybrid connection](https://learn.microsoft.com/en-us/azure/azure-relay/relay-hybrid-connections-protocol) with Azure Relay and waits for connection requests. An application running in the cloud can connect to the device by targeting the same hybrid connection. The cloud application then exposes a public endpoint that is accessible to users and marshalls all bytes between the user and the device through the hybrid connection. This enables communication between the user and device using any protocol that leverages TCP. 
 
-The flow below demonstrates how a user can access a web server that is running on a remote device in a private network.
+This sample defaults to using HTTP with a web server listening on port 8080. Simply change the protocol and/or port to use any other TCP based protocol and/or port.
+
+The flow below demonstrates how a user can access a service that is running on a remote device in a private network.
 
 ![secure-tunneling](docs/assets/secure-tunneling.png) 
 
@@ -27,11 +29,11 @@ The flow below demonstrates how a user can access a web server that is running o
 2. The Orchestrator invokes a direct method to the device via IoT Hub. 
     - Direct methods are synchronous, follow a request-response pattern and are meant for communications that require immediate confirmation of their result (within a user-specified timeout). 
     - The [Azure IoT service SDK](https://www.nuget.org/packages/Microsoft.Azure.Devices) is used as it contains code to interact directly with IoT Hub to manage devices.
-3. The target device runs a web server and sends Telemetry to the IoT Hub. Upon initiation of a connection, it runs a Remote Forwarder for the port the web server is running on via [Azure Relay Bridge](https://github.com/Azure/azure-relay-bridge#readme) and starts listening to an Azure Relay Hybrid Connection of the same name. 
+3. The target device sends Telemetry to the IoT Hub, and by default runs a web server on port 8080. Upon initiation of a connection, it runs a Remote Forwarder for the port the service is running on via [Azure Relay Bridge](https://github.com/Azure/azure-relay-bridge#readme) and starts listening to an Azure Relay Hybrid Connection of the same name. 
     - The [Azure IoT Hub device SDK](https://www.nuget.org/packages/Microsoft.Azure.Devices.Client) is used to receive and respond to the direct method without having to worry about the underlying protocol details. 
 4. Upon successful response, the Orchestrator provisions and/or starts an Azure Container Instance (ACI) that runs a Local Forwarder via [Azure Relay Bridge](https://github.com/Azure/azure-relay-bridge#readme) configured to connect to the same Azure Relay Hybrid Connection.
 5. The ACI connects to the Azure Relay Hybrid Connection and exposes a public endpoint.
-6. When the connection is established, the user can access the web server that is running on the remote device by going to the ACI's fully qualified domain name (FQDN) in their browser.
+6. When the connection is established, the user can access the service that is running on the remote device by using to the ACI's fully qualified domain name (FQDN) and port with an appropriate client tool, e.g., a web browser for HTTP.
 
 ## Provision resources and deploy Azure Function
 
@@ -50,7 +52,9 @@ The flow below demonstrates how a user can access a web server that is running o
     cp sample.settings.yaml settings.yaml
     ```
 
-    set the tenantId and subscriptionId, and adjust the values for the Azure resource names by replacing `[unique-id]` with a unique identifier so that your resource names are unique across Azure.
+    Set the tenantId and subscriptionId, and adjust the values for the Azure resource names by replacing `[unique-id]` with a unique identifier so that your resource names are unique across Azure.
+
+    To use a different protocol than HTTP, change the value of `serviceProtocol` to an appropriate value, e.g., `ssh` and change the `servicePort` to the port on which the service is running, e.g., `22`. Note: The value of the protocol is arbitrary, used only for messaging purposes and does not have to match the actual protocol running on the device.
 
 1. Execute `provision_resources.ps1` script to:
 
@@ -86,7 +90,7 @@ To start the simulated device follow these steps:
 1. Start the Simulated device to: 
 
     - Send Telemetry to the IoT Hub
-    - Run a web server
+    - Run a web server (for http)
     - Handle direct method call to run the azure relay remote forwarder
     - Handle direct method call to stop the azure relay remote forwarder
 
@@ -97,9 +101,14 @@ To start the simulated device follow these steps:
 
     ![simulated-device-telemetry](docs/assets/simulated-device-telemetry.png)
 
-1. Confirm you can access the local web server on `http://localhost:8080/`
+1. For http, confirm you can access the local web server on `http://localhost:8080/`
 
     ![web-server](docs/assets/web-server.png)
+
+    If you are using a different protocol, use the appropriate client tool to confirm access to the service running on the device. For example, using SSH:
+    ```bash
+    ssh <username>@localhost
+    ``` 
 
 ### Call the Azure Function to create a connection to the device
 
@@ -136,11 +145,18 @@ Example Postman request:
 
 ![postman](docs/assets/postman.png)
 
-Once DNS is propagated and ACI starts up (it might take a few minutes), you will be able to access the web server that is running on the device using the ACI FQDN and port number that are returned in the response. 
+Once DNS is propagated and ACI starts up (it might take a few minutes), you will be able to access the service that is running on the device using the ACI FQDN and port number that are returned in the response. 
+
+For example, using HTTP:
 
 ![web-server-aci](docs/assets/web-server-aci.png)
 
-To call the function to delete the connection use Postman or curl:
+For example, using SSH:
+```bash
+ssh -p 8090 <username>@<aci-fqdn>
+```
+
+To call the function to delete the connection, use Postman or curl:
 
 ```bash
 curl --location --request DELETE "https://$FUNCTION_NAME.azurewebsites.net/api/connection" \

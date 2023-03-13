@@ -9,6 +9,8 @@ azure:
     ioT:
         name: iot-st-sample-[unique-id]
         deviceId: device-st-sample
+        serviceProtocol: http
+        servicePort: 8080
     relay:
         namespace: azrelay-st-sample-[unique-id]
         hybridConnectionName: device-st-sample
