@@ -47,7 +47,7 @@ function CreateDeviceAppConfig {
 }
 
 if (-not $SkipLogin) {
-    Write-Host "Logging in to Azure..."
+    Write-Host "Logging into Azure..."
     az login --tenant $Azure.TenantId
     az account set --subscription $Azure.SubscriptionId
 }
@@ -73,7 +73,7 @@ if (-not $SkipProvisionResources) {
     az relay namespace authorization-rule create --resource-group $Azure.ResourceGroup.Name --namespace-name $Azure.Relay.Namespace --name SendListen --rights Send Listen
     az relay hyco create --resource-group $Azure.ResourceGroup.Name --namespace-name $Azure.Relay.Namespace --name $Azure.IoT.DeviceId
 
-    Write-Host "Creating an app service plan for the function app..."
+    Write-Host "Creating an Azure App Service plan for the Function App..."
     az functionapp plan create --name $Azure.Function.Plan --resource-group $Azure.ResourceGroup.Name --is-linux true --sku S1
 
     Write-Host "Creating a storage account..."
@@ -110,9 +110,9 @@ if (-not $SkipBuildPushImages) {
 }
 
 if (-not $SkipFunctionDeployment) {
-    Write-Host "Creating and deploying the azure function..."
+    Write-Host "Creating and deploying the Azure Function..."
     az functionapp create --name $Azure.Function.Name --resource-group $Azure.ResourceGroup.Name --storage-account $Azure.Function.Storage `
-        --plan $Azure.Function.Plan`
+        --plan $Azure.Function.Plan `
         --deployment-container-image-name $FunctionImage `
         --docker-registry-server-password $AcrUserPassword `
         --docker-registry-server-user $AcrUser `
@@ -122,14 +122,14 @@ if (-not $SkipFunctionDeployment) {
         --runtime dotnet `
         --runtime-version 6
 
-    Write-Host "Assigning contributor role to function identity for the resource group scope..."
+    Write-Host "Assigning contributor role to function's identity for the resource group scope..."
     $Scope = '/subscriptions/' + $Azure.SubscriptionId + '/resourceGroups/' + $Azure.ResourceGroup.Name
     az functionapp identity assign --resource-group $Azure.ResourceGroup.Name `
         --name $Azure.Function.Name `
         --role contributor `
         --scope $Scope
 
-    Write-Host "Generating the azure function app settings file..."
+    Write-Host "Generating the Azure Function app settings file..."
     $IoTHubServiceConnectionString = $(az iot hub connection-string show --hub-name $Azure.IoT.Name --policy-name service -o tsv)
     AddAppSetting -SettingName "AZRELAY_CONN_STRING" -SettingValue $AzureRelayConnString
     AddAppSetting -SettingName "AZURE_SUBSCRIPTION" -SettingValue $Azure.SubscriptionId 

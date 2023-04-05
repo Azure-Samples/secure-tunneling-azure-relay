@@ -1,6 +1,6 @@
 azure:
-    tenantId: 
-    subscriptionId: 
+    tenantId: [azure-active-directory-tenant-guid]
+    subscriptionId: [subscription-guid]
     resourceGroup:
         name: rg-st-sample
         region: westus
