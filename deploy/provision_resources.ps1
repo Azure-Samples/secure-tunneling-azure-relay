@@ -53,14 +53,11 @@ if (-not $SkipLogin) {
 }
 
 if (-not $SkipProvisionResources) {
-    Write-Host "Registering ContainerInstance provider..."
-    az provider register --namespace 'Microsoft.ContainerInstance'
-
     Write-Host "Creating Resource Group..."
     az group create --name $Azure.ResourceGroup.Name --location $Azure.ResourceGroup.Region
 
     Write-Host "Creating Container Registry..."
-    az acr create --resource-group $Azure.ResourceGroup.Name --name $Azure.ContainerRegistry.Name --sku Basic --admin-enabled
+    az acr create --resource-group $Azure.ResourceGroup.Name --name $Azure.ContainerRegistry.Name --sku Standard --admin-enabled
 
     Write-Host "Creating IoT Hub..."
     az iot hub create --resource-group $Azure.ResourceGroup.Name --name $Azure.IoT.Name
@@ -77,7 +74,7 @@ if (-not $SkipProvisionResources) {
     az functionapp plan create --name $Azure.Function.Plan --resource-group $Azure.ResourceGroup.Name --is-linux true --sku S1
 
     Write-Host "Creating a storage account..."
-    az storage account create --name $Azure.Function.Storage --resource-group $Azure.ResourceGroup.Name
+    az storage account create --name $Azure.Function.Storage --resource-group $Azure.ResourceGroup.Name --acccess-tier Hot --https-only true --kind StorageV2 --public-network-access Enabled
 }
 
 Write-Host "Logging in to the Azure Container Registry..."
@@ -85,8 +82,10 @@ az acr login --name $Azure.ContainerRegistry.Name
 $AcrServer = $(az acr show --name $Azure.ContainerRegistry.Name --resource-group $Azure.ResourceGroup.Name --query loginServer -o tsv)
 $AcrUser = $(az acr credential show -n $Azure.ContainerRegistry.Name --query username -o tsv)
 $AcrUserPassword = $(az acr credential show -n $Azure.ContainerRegistry.Name --query passwords[0].value -o tsv)
-$FunctionImage = $AcrServer + "/" + $Azure.Function.Name + ":latest"
-$LocalForwarderImage = $AcrServer + "/localforwarder-azbridge:latest"
+$LocalForwarderImage = "localforwarder-azbridge:latest"
+$AcrLocalForwarderImage = $AcrServer + "/" + $LocalForwarderImage
+$FunctionImage = $Azure.Function.Name + ":latest"
+$AcrFunctionImage = $AcrServer + "/" + $FunctionImage
 $AzureRelayConnString = $(az relay namespace authorization-rule keys list --resource-group $Azure.ResourceGroup.Name --namespace-name $Azure.Relay.Namespace --name SendListen --query primaryConnectionString -o tsv)
 $DeviceConnectionString = $(az iot hub device-identity connection-string show --device-id $Azure.IoT.DeviceId --hub-name $Azure.IoT.Name -o tsv)
 $ServiceProtocol = $Azure.IoT.serviceProtocol
@@ -96,24 +95,17 @@ Write-Host "Creating simulated-device app.config..."
 CreateDeviceAppConfig
 
 if (-not $SkipBuildPushImages) {
-    Write-Host "Building the docker image for the local forwarder..."
-    docker build ../src/local-forwarder --platform=linux/amd64 -f ../src/local-forwarder/Dockerfile --tag $LocalForwarderImage
-
-    Write-Host "Pushing the localforwarder image to the Azure Container Registry..."
-    docker push $LocalForwarderImage
-
-    Write-Host "Building the docker image for the azure function..."
-    docker build ../src/function/. -f ../src/function/Dockerfile --tag $FunctionImage
-
-    Write-Host "Pushing the azure function image to the Azure Container Registry..."
-    docker push $FunctionImage
+    Write-Host "Building and pushing the container image for the local forwarder..."
+    az acr build --registry $Azure.ContainerRegistry.Name --image $LocalForwarderImage --platform linux/amd64 ../src/local-forwarder/
+    Write-Host "Building and pushing the container image for the Azure Function..."
+    az acr build --registry $Azure.ContainerRegistry.Name --image $FunctionImage --platform linux/amd64 ../src/function/
 }
 
 if (-not $SkipFunctionDeployment) {
     Write-Host "Creating and deploying the Azure Function..."
     az functionapp create --name $Azure.Function.Name --resource-group $Azure.ResourceGroup.Name --storage-account $Azure.Function.Storage `
         --plan $Azure.Function.Plan `
-        --deployment-container-image-name $FunctionImage `
+        --deployment-container-image-name $AcrFunctionImage `
         --docker-registry-server-password $AcrUserPassword `
         --docker-registry-server-user $AcrUser `
         --functions-version 4 `
@@ -134,7 +126,7 @@ if (-not $SkipFunctionDeployment) {
     AddAppSetting -SettingName "AZRELAY_CONN_STRING" -SettingValue $AzureRelayConnString
     AddAppSetting -SettingName "AZURE_SUBSCRIPTION" -SettingValue $Azure.SubscriptionId 
     AddAppSetting -SettingName "CONTAINER_GROUP_NAME" -SettingValue $Azure.Container.InstanceGroupName
-    AddAppSetting -SettingName "CONTAINER_IMAGE" -SettingValue $LocalForwarderImage
+    AddAppSetting -SettingName "CONTAINER_IMAGE" -SettingValue $AcrLocalForwarderImage
     AddAppSetting -SettingName "CONTAINER_PORT" -SettingValue $Azure.Container.Port
     AddAppSetting -SettingName "CONTAINER_REGISTRY" -SettingValue $AcrServer
     AddAppSetting -SettingName "CONTAINER_REGISTRY_USERNAME" -SettingValue $AcrUser
