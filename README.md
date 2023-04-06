@@ -42,13 +42,28 @@ The flow below demonstrates how a user can access a service that is running on a
 
 ### Prerequisites
 
-- [Docker](https://www.docker.com/)
+- [Azure Subscription](https://azure.microsoft.com/) with
+    - permissions to create resources and perform role assignments
+    - the following [Resource providers](https://learn.microsoft.com/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider) registered
+        - Microsoft.Resources
+        - Microsoft.ContainerRegistry
+        - Microsoft.Devices
+        - Microsoft.Relay
+        - Microsoft.Web
+        - Microsoft.Storage
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) 2.4.2 or newer
 - [Azure CLI IoT extension](https://github.com/Azure/azure-iot-cli-extension#installation)
 - [Powershell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)
 - [.NET 6.0](https://dotnet.microsoft.com/download/dotnet/6.0)
 
 ### Provision Azure components
+
+1. Clone the repo.
+
+    ```bash
+    git clone https://github.com/Azure-Samples/secure-tunneling-azure-relay.git
+    cd secure-tunneling-azure-relay
+    ```
 
 1. Create and update the **settings.yaml** file.
 
@@ -93,7 +108,11 @@ The flow below demonstrates how a user can access a service that is running on a
 
 To start the simulated device follow these steps:
 
-1. Confirm that during the provisioning step, the **src/simulated-device/app.config** was generated.
+1. Review the **src/simulated-device/app.config** to confirm that the values for the following appSettings were set during the provisioning step.
+    - `IOTHUB_DEVICE_CONNECTION_STRING`
+    - `AZRELAY_CONN_STRING`
+    - `SERVICE_PROTOCOL`
+    - `SERVICE_PORT`
 
 1. Start the simulated device to:
 
@@ -103,7 +122,7 @@ To start the simulated device follow these steps:
     - Handle the direct method call to stop the Azure Relay remote forwarder
 
     ```bash
-    cd src/simulated-device
+    cd ../src/simulated-device
     dotnet run
     ```
 
@@ -167,7 +186,7 @@ The deployed Azure Function has two HTTP methods.
     For example, using SSH:
 
     ```bash
-    ssh -p 8090 <username>@<aci-fqdn>
+    ssh -p 8090 <username>@aci-st-sample667z9.eastus.azurecontainer.io
     ```
 
 1. Delete the connection.
@@ -186,7 +205,7 @@ The deployed Azure Function has two HTTP methods.
 To clean up all the resources in Azure and delete the local images that were created during provisioning execute the **cleanup_resources.ps1** script.
 
 ```bash
-cd deploy
+cd ../../deploy
 pwsh cleanup_resources.ps1
 ```
 
