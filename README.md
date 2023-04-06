@@ -44,7 +44,7 @@ The flow below demonstrates how a user can access a service that is running on a
 
 - [Azure Subscription](https://azure.microsoft.com/) with
     - permissions to create resources and perform role assignments
-    - the following [Resource providers](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider) registered
+    - the following [Resource providers](https://learn.microsoft.com/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider) registered
         - Microsoft.Resources
         - Microsoft.ContainerRegistry
         - Microsoft.Devices
@@ -58,9 +58,9 @@ The flow below demonstrates how a user can access a service that is running on a
 
 ### Provision Azure components
 
-1. Clone the repo
+1. Clone the repo.
 
-    ```
+    ```bash
     git clone https://github.com/Azure-Samples/secure-tunneling-azure-relay.git
     cd secure-tunneling-azure-relay
     ```
@@ -109,10 +109,10 @@ The flow below demonstrates how a user can access a service that is running on a
 To start the simulated device follow these steps:
 
 1. Review the **src/simulated-device/app.config** to confirm that the values for the following appSettings were set during the provisioning step.
-    - IOTHUB_DEVICE_CONNECTION_STRING
-    - AZRELAY_CONN_STRING
-    - SERVICE_PROTOCOL
-    - SERVICE_PORT
+    - `IOTHUB_DEVICE_CONNECTION_STRING`
+    - `AZRELAY_CONN_STRING`
+    - `SERVICE_PROTOCOL`
+    - `SERVICE_PORT`
 
 1. Start the simulated device to:
 

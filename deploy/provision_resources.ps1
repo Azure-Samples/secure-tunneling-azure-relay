@@ -97,6 +97,7 @@ CreateDeviceAppConfig
 if (-not $SkipBuildPushImages) {
     Write-Host "Building and pushing the container image for the local forwarder..."
     az acr build --registry $Azure.ContainerRegistry.Name --image $LocalForwarderImage --platform linux/amd64 ../src/local-forwarder/
+
     Write-Host "Building and pushing the container image for the Azure Function..."
     az acr build --registry $Azure.ContainerRegistry.Name --image $FunctionImage --platform linux/amd64 ../src/function/
 }
