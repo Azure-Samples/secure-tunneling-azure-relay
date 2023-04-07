@@ -74,7 +74,7 @@ if (-not $SkipProvisionResources) {
     az functionapp plan create --name $Azure.Function.Plan --resource-group $Azure.ResourceGroup.Name --is-linux true --sku S1
 
     Write-Host "Creating a storage account..."
-    az storage account create --name $Azure.Function.Storage --resource-group $Azure.ResourceGroup.Name --acccess-tier Hot --https-only true --kind StorageV2 --public-network-access Enabled
+    az storage account create --name $Azure.Function.Storage --resource-group $Azure.ResourceGroup.Name --access-tier Hot --https-only true --kind StorageV2 --public-network-access Enabled
 }
 
 Write-Host "Logging in to the Azure Container Registry..."
