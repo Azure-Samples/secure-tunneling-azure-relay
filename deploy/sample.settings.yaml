@@ -18,7 +18,6 @@ azure:
         name: func-st-sample-[unique-id]
         plan: asp-st-sample-[unique-id]
         storage: strgstsample[unique-id]
-        identity: id-func-st-sample-[unique-id]
     container:
         instanceGroupName: aci-st-sample-[unique-id]
         port: 8090

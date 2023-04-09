@@ -72,10 +72,7 @@ if (-not $SkipProvisionResources) {
 
     Write-Host "Creating an Azure App Service plan for the Function App..."
     az functionapp plan create --name $Azure.Function.Plan --resource-group $Azure.ResourceGroup.Name --is-linux true --sku S1
-    
-    Write-Host "Creating user-assigned managed identity..."
-    az identity create --name $Azure.Function.Identity --resource-group $Azure.ResourceGroup.Name
-    
+
     Write-Host "Creating a storage account..."
     az storage account create --name $Azure.Function.Storage --resource-group $Azure.ResourceGroup.Name --access-tier Hot --https-only true --kind StorageV2 --public-network-access Enabled
 }
@@ -106,33 +103,22 @@ if (-not $SkipBuildPushImages) {
 }
 
 if (-not $SkipFunctionDeployment) {
-    Write-Host "Assigning required roles to user assigned identity..."
-    $IdentityClientId = $(az identity show --name $Azure.Function.Identity --resource-group $Azure.ResourceGroup.Name --query clientId -o tsv)
-    
-    $AcrScope = $(az acr show --name $Azure.ContainerRegistry.Name --resource-group $Azure.ResourceGroup.Name --query id -o tsv)
-    az role assignment create --role AcrPull --assignee $IdentityClientId --scope $AcrScope
-
     $Scope = $(az group show --name $Azure.ResourceGroup.Name --query id -o tsv)
-    az role assignment create --role Contributor --assignee $IdentityClientId --scope $Scope
-    
+
     Write-Host "Creating and deploying the Azure Function..."
-    $IdentityId = $(az identity show --name $Azure.Function.Identity --resource-group $Azure.ResourceGroup.Name --query id -o tsv)
     az functionapp create --name $Azure.Function.Name `
         --resource-group $Azure.ResourceGroup.Name `
         --storage-account $Azure.Function.Storage `
         --plan $Azure.Function.Plan `
         --deployment-container-image-name $AcrFunctionImage `
-        --assign-identity $IdentityId `
+        --assign-identity [system] `
+        --role contributor `
+        --scope $Scope `
         --functions-version 4 `
         --os-type Linux `
         --disable-app-insights true `
         --runtime dotnet `
         --runtime-version 6	       
-
-    Write-Host "Setting the Azure Function Registry settings..."
-    $FunctionId = $(az functionapp show --name $Azure.Function.Name --resource-group $Azure.ResourceGroup.Name --query id -o tsv)
-    az resource update --ids $FunctionId --set properties.siteConfig.acrUseManagedIdentityCreds=True
-    az resource update --ids $FunctionId --set properties.siteConfig.acrUserManagedIdentityID=$IdentityClientId
 
     Write-Host "Generating the Azure Function app settings file..."
     $IoTHubServiceConnectionString = $(az iot hub connection-string show --hub-name $Azure.IoT.Name --policy-name service -o tsv)
