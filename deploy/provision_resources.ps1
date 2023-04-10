@@ -107,7 +107,7 @@ if (-not $SkipFunctionDeployment) {
     az functionapp create --name $Azure.Function.Name --resource-group $Azure.ResourceGroup.Name --storage-account $Azure.Function.Storage `
         --plan $Azure.Function.Plan `
         --deployment-container-image-name $AcrFunctionImage `
-        --docker-registry-server-password $AcrUserPassword `
+        --docker-registry-server-password $AcrUserPassword ` # Alternatively, use a managed identity on this function with the acrPull role assigned.
         --docker-registry-server-user $AcrUser `
         --functions-version 4 `
         --os-type Linux `
