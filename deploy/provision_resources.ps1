@@ -97,7 +97,7 @@ CreateDeviceAppConfig
 
 if (-not $SkipBuildPushImages) {
     Write-Host "Building and pushing the container image for the local forwarder..."
-    $OutputFile = "../src/local-forwarder/packages/" + $Azure.Container.AzureRelayBridgePackage
+    $OutputFile = "../src/local-forwarder/" + $Azure.Container.AzureRelayBridgePackage
     curl --location --output $OutputFile $AzureRelayBridgePackageUrl
     az acr build --registry $Azure.ContainerRegistry.Name --image $LocalForwarderImage --platform linux/amd64 ../src/local-forwarder/
 
