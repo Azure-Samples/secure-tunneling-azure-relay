@@ -13,6 +13,7 @@ $Azure = $Settings.Azure
 $AzureFunctionSettings = [System.Collections.ArrayList]@()
 $FunctionAppSettingsFile = "azure.settings.json"
 $DeviceAppConfigFile = "../src/simulated-device/app.config"
+$AzureRelayBridgePackageUrl = "https://github.com/Azure/azure-relay-bridge/releases/download/" + $Azure.Container.AzureRelayBridgeVersion + "/" + $Azure.Container.AzureRelayBridgePackage
 
 function AddAppSetting {
     param (
@@ -96,6 +97,8 @@ CreateDeviceAppConfig
 
 if (-not $SkipBuildPushImages) {
     Write-Host "Building and pushing the container image for the local forwarder..."
+    $OutputFile = "../src/local-forwarder/packages/" + $Azure.Container.AzureRelayBridgePackage
+    curl --location --output $OutputFile $AzureRelayBridgePackageUrl
     az acr build --registry $Azure.ContainerRegistry.Name --image $LocalForwarderImage --platform linux/amd64 ../src/local-forwarder/
 
     Write-Host "Building and pushing the container image for the Azure Function..."
@@ -104,10 +107,11 @@ if (-not $SkipBuildPushImages) {
 
 if (-not $SkipFunctionDeployment) {
     Write-Host "Creating and deploying the Azure Function..."
+    # Consider using a managed identity with the AcrPull role assigned instead of docker registry credentials.
     az functionapp create --name $Azure.Function.Name --resource-group $Azure.ResourceGroup.Name --storage-account $Azure.Function.Storage `
         --plan $Azure.Function.Plan `
         --deployment-container-image-name $AcrFunctionImage `
-        --docker-registry-server-password $AcrUserPassword ` # Alternatively, use a managed identity on this function with the acrPull role assigned.
+        --docker-registry-server-password $AcrUserPassword `
         --docker-registry-server-user $AcrUser `
         --functions-version 4 `
         --os-type Linux `
