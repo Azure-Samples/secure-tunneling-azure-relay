@@ -19,5 +19,7 @@ azure:
         plan: asp-st-sample-[unique-id]
         storage: strgstsample[unique-id]
     container:
+        azureRelayBridgeVersion: v0.8.1
+        azureRelayBridgePackage: azbridge.0.8.1-rel.ubuntu.20.04-x64.deb
         instanceGroupName: aci-st-sample-[unique-id]
         port: 8090

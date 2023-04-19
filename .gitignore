@@ -16,3 +16,4 @@ obj/
 .vs/
 settings.yaml
 app.config
+*.deb
