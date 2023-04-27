@@ -20,7 +20,11 @@ When devices are installed at remote locations and protected by firewalls, the u
 TODO: To learn more about this scenario, please read [Secure Tunneling with Azure Relay](TODO) in the Azure Architecture Center.
 
 -->
-This code sample implements a secure tunneling solution that uses the [Azure Relay service](https://learn.microsoft.com/azure/azure-relay/relay-what-is-it), demonstrating how to open a connection that uses a secure tunnel between a cloud endpoint and a device at a remote site. The device acts as a listener that creates a [hybrid connection](https://learn.microsoft.com/azure/azure-relay/relay-hybrid-connections-protocol) with Azure Relay and waits for connection requests. An application running in the cloud can connect to the device by targeting the same hybrid connection. The cloud application then exposes a public endpoint that is accessible to users and marshals all network communication between the user and the device through the hybrid connection. This enables communication between the user and device using any protocol that leverages TCP.
+This code sample implements a [Secure Tunneling solution](https://learn.microsoft.com/azure/architecture/example-scenario/networking/secure-tunneling-azure-relay) that uses the [Azure Relay service](https://learn.microsoft.com/azure/azure-relay/relay-what-is-it), demonstrating how to open a connection that uses a secure tunnel between a cloud endpoint and a device at a remote site.
+The device acts as a listener that creates a [hybrid connection](https://learn.microsoft.com/azure/azure-relay/relay-hybrid-connections-protocol) with Azure Relay and waits for connection requests.
+An application running in the cloud can connect to the device by targeting the same hybrid connection.
+The cloud application then exposes a public endpoint that is accessible to users and marshals all network communication between the user and the device through the hybrid connection.
+This enables communication between the user and device using any protocol that leverages TCP.
 
 This sample defaults to using HTTP with a web server listening on port 8080. Simply change the protocol and/or port to use any other TCP based protocol and/or port.
 
